@@ -17,19 +17,19 @@ class [[eosio::contract]] htlc : public eosio::contract
        */
       [[eosio::action]]
       uint64_t create(eosio::name sender, eosio::name receiver, eosio::asset token, 
-            eosio::checksum256 hashlock, uint64_t timelock);
+            eosio::checksum256 hashlock, eosio::time_point timelock);
 
       /*****
        * I have the preimage. Send the tokens to the receiver
        */
       [[eosio::action]]
-      void withdraw(std::string preimage);
+      void withdraw(uint64_t key, std::string preimage);
 
       /*****
        * Return the tokens to the sender
        */
       [[eosio::action]]
-      void refund();
+      void refund(uint64_t);
 
    private:
       struct [[eosio::table]] htlc_contract
@@ -40,7 +40,7 @@ class [[eosio::contract]] htlc : public eosio::contract
          eosio::name receiver; // the destination for the tokens
          eosio::asset token; // the token and quantity
          eosio::checksum256 hashlock; // the hash of the preimage
-         uint64_t timelock; // when the contract expires and sender can ask for refund
+         eosio::time_point timelock; // when the contract expires and sender can ask for refund
          bool withdrawn; // true if receiver provides the preimage
          bool refunded; // true if sender is refunded
          std::string preimage; /// the preimage provided by the receiver to claim
@@ -49,7 +49,7 @@ class [[eosio::contract]] htlc : public eosio::contract
 
          htlc_contract() {}
          htlc_contract(eosio::name sender, eosio::name receiver, eosio::asset token,
-               eosio::checksum256 hashlock, uint64_t timelock)
+               eosio::checksum256 hashlock, eosio::time_point timelock)
          {
             this->key = 0;
             this->sender = sender;

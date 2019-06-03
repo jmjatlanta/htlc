@@ -1,7 +1,9 @@
 #include <htlc.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/system.hpp>
 
 uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset token, 
-      eosio::checksum256 hashlock, uint64_t timelock)
+      eosio::checksum256 hashlock, eosio::time_point timelock)
 {
    require_auth(sender);
    htlc_index htlcs(get_self(), get_first_receiver().value);
@@ -21,14 +23,31 @@ uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset tok
    return key;
 }
 
-void htlc::withdraw(std::string preimage)
+void htlc::withdraw(uint64_t key, std::string preimage)
 {
+   htlc_index htlcs(get_self(), get_first_receiver().value);
+   auto iterator = htlcs.find(key);
+   // basic checks
+   eosio::check( iterator != htlcs.end(), "HTLC not found");
+   eosio::check( !(*iterator).withdrawn, "Tokens from this HTLC have already been withdrawn" );
+   eosio::check( !(*iterator).refunded, "Tokens from this HTLC have already been refunded");
+   eosio::check( (*iterator).timelock < eosio::current_block_time(), "HTLC timelock expired");
+   eosio::checksum256 passed_in_hash = eosio::sha256(preimage.c_str(), preimage.length());
+   eosio::check( (*iterator).hashlock == passed_in_hash, "Preimage mismatch");
+   // all looks good, do the transfer
 
-}
+ }
 
-void htlc::refund()
+void htlc::refund(uint64_t key)
 {
-
+   htlc_index htlcs(get_self(), get_first_receiver().value);
+   auto iterator = htlcs.find(key);
+   // basic checks
+   eosio::check( iterator != htlcs.end(), "HTLC not found");
+   eosio::check( !(*iterator).withdrawn, "Tokens from this HTLC have already been withdrawn" );
+   eosio::check( !(*iterator).refunded, "Tokens from this HTLC have already been refunded");
+   eosio::check( (*iterator).timelock >= eosio::current_block_time(), "HTLC timelock expired");
+   // all looks good, do the refund
 }
 
 
