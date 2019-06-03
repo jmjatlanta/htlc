@@ -7,19 +7,16 @@ class [[eosio::contract]] htlc : public eosio::contract
 {
    public:
       /*****
-       * Constructor
+       * default constructor
        */
       htlc(eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds)
-            :contract(receiver, code, ds)
-      {
-
-      }
+            :contract(receiver, code, ds) {}
 
       /****
        * Create a new HTLC
        */
       [[eosio::action]]
-      void create(eosio::name receiver, eosio::asset token, 
+      uint64_t create(eosio::name sender, eosio::name receiver, eosio::asset token, 
             eosio::checksum256 hashlock, uint64_t timelock);
 
       /*****
@@ -37,17 +34,34 @@ class [[eosio::contract]] htlc : public eosio::contract
    private:
       struct [[eosio::table]] htlc_contract
       {
-         eosio::checksum256 key;
-         eosio::name sender;
-         eosio::name receiver;
-         eosio::asset token;
-         eosio::checksum256 hashlock;
-         uint64_t timelock;
-         bool witdrawn;
-         bool refunded;
-         std::string preimage;
+         uint64_t key; // unique key
+         eosio::checksum256 id; // unique key to prevent duplicates
+         eosio::name sender; // who created the HTLC
+         eosio::name receiver; // the destination for the tokens
+         eosio::asset token; // the token and quantity
+         eosio::checksum256 hashlock; // the hash of the preimage
+         uint64_t timelock; // when the contract expires and sender can ask for refund
+         bool withdrawn; // true if receiver provides the preimage
+         bool refunded; // true if sender is refunded
+         std::string preimage; /// the preimage provided by the receiver to claim
 
-         eosio::checksum256 primary_key() const { return key; }
+         uint64_t primary_key() const { return key; }
+
+         htlc_contract() {}
+         htlc_contract(eosio::name sender, eosio::name receiver, eosio::asset token,
+               eosio::checksum256 hashlock, uint64_t timelock)
+         {
+            this->key = 0;
+            this->sender = sender;
+            this->receiver = receiver;
+            this->token = token;
+            this->hashlock = hashlock;
+            this->timelock = timelock;
+            this->preimage = "";
+            this->withdrawn = false;
+            this->refunded = false;
+            //TODO: Make a unique secondary index with a (sha256?) hash to prevent duplicates
+         }
       };
 
       typedef eosio::multi_index<"htlcs"_n, htlc_contract> htlc_index;
