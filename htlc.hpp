@@ -23,19 +23,22 @@ class [[eosio::contract]] htlc : public eosio::contract
        * I have the preimage. Send the tokens to the receiver
        */
       [[eosio::action]]
-      void withdraw(uint64_t key, std::string preimage);
+      void withdraw(uint64_t id, std::string preimage);
 
       /*****
        * Return the tokens to the sender
        */
       [[eosio::action]]
-      void refund(uint64_t);
+      void refund(uint64_t id);
 
    private:
+
+      /***
+       * persistence record format
+       */
       struct [[eosio::table]] htlc_contract
       {
-         uint64_t key; // unique key
-         eosio::checksum256 id; // unique key to prevent duplicates
+         uint64_t id; // unique key to prevent duplicates
          eosio::name sender; // who created the HTLC
          eosio::name receiver; // the destination for the tokens
          eosio::asset token; // the token and quantity
@@ -45,13 +48,12 @@ class [[eosio::contract]] htlc : public eosio::contract
          bool refunded; // true if sender is refunded
          std::string preimage; /// the preimage provided by the receiver to claim
 
-         uint64_t primary_key() const { return key; }
+         uint64_t primary_key() const { return id; }
 
          htlc_contract() {}
          htlc_contract(eosio::name sender, eosio::name receiver, eosio::asset token,
                eosio::checksum256 hashlock, eosio::time_point timelock)
          {
-            this->key = 0;
             this->sender = sender;
             this->receiver = receiver;
             this->token = token;
@@ -60,8 +62,11 @@ class [[eosio::contract]] htlc : public eosio::contract
             this->preimage = "";
             this->withdrawn = false;
             this->refunded = false;
-            //TODO: Make a unique secondary index with a (sha256?) hash to prevent duplicates
+            //TODO: Make a unique secondary index with id to prevent duplicates
          }
+
+      private:
+         
       };
 
       typedef eosio::multi_index<"htlcs"_n, htlc_contract> htlc_index;

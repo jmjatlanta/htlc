@@ -8,9 +8,15 @@ uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset tok
    require_auth(sender);
    htlc_index htlcs(get_self(), get_first_receiver().value);
    htlc_contract htlc(sender, receiver, token, hashlock, timelock);
-   uint64_t key = htlcs.available_primary_key();
+   // make sure the receiver exists
+   assert( is_account( receiver ) );
+   // make sure the sender has the funds
+   const auto bal = eosio::token::get_balance("eosio.token"_n, sender, token.symbol.code());
+   eosio::check(token.amount < bal.amount, "Insuffiient Funds");
+   // build the record
+   uint64_t id = htlcs.available_primary_key();
    htlcs.emplace(sender, [&](auto& row) {
-      row.key = key;
+      row.id = id;
       row.sender = htlc.sender;
       row.receiver = htlc.receiver;
       row.token = htlc.token;
@@ -20,7 +26,11 @@ uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset tok
       row.refunded = htlc.refunded;
       row.preimage = htlc.preimage;
    });
-   return key;
+   // Hold funds in this contract
+   eosio::action( eosio::permission_level{sender, "active"_n},
+         "eosio.token"_n, "transfer"_n,
+         std::make_tuple(_self, "eosio.token"_n, token, std::string("Held in HTLC")));
+   return id;
 }
 
 void htlc::withdraw(uint64_t key, std::string preimage)
@@ -34,7 +44,7 @@ void htlc::withdraw(uint64_t key, std::string preimage)
    eosio::check( (*iterator).timelock < eosio::current_block_time(), "HTLC timelock expired");
    eosio::checksum256 passed_in_hash = eosio::sha256(preimage.c_str(), preimage.length());
    eosio::check( (*iterator).hashlock == passed_in_hash, "Preimage mismatch");
-   // all looks good, do the transfer
+   // TODO: all looks good, do the transfer
 
  }
 
@@ -47,7 +57,7 @@ void htlc::refund(uint64_t key)
    eosio::check( !(*iterator).withdrawn, "Tokens from this HTLC have already been withdrawn" );
    eosio::check( !(*iterator).refunded, "Tokens from this HTLC have already been refunded");
    eosio::check( (*iterator).timelock >= eosio::current_block_time(), "HTLC timelock expired");
-   // all looks good, do the refund
+   // TODO: all looks good, do the refund
 }
 
 
