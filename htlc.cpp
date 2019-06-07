@@ -44,8 +44,11 @@ void htlc::withdraw(uint64_t key, std::string preimage)
    eosio::check( (*iterator).timelock < eosio::current_block_time(), "HTLC timelock expired");
    eosio::checksum256 passed_in_hash = eosio::sha256(preimage.c_str(), preimage.length());
    eosio::check( (*iterator).hashlock == passed_in_hash, "Preimage mismatch");
-   // TODO: all looks good, do the transfer
-
+   // all looks good, do the transfer
+   eosio::action( eosio::permission_level{_self, "active"_n},
+         "eosio.token"_n, "transfer"_n,
+         std::make_tuple((*iterator).receiver, "eosio.token"_n, (*iterator).token, 
+               std::string("Withdrawn from HTLC")));
  }
 
 void htlc::refund(uint64_t key)
@@ -58,6 +61,10 @@ void htlc::refund(uint64_t key)
    eosio::check( !(*iterator).refunded, "Tokens from this HTLC have already been refunded");
    eosio::check( (*iterator).timelock >= eosio::current_block_time(), "HTLC timelock expired");
    // TODO: all looks good, do the refund
+   eosio::action( eosio::permission_level{_self, "active"_n},
+         "eosio.token"_n, "transfer"_n,
+         std::make_tuple((*iterator).sender, "eosio.token"_n, (*iterator).token, 
+               std::string("Refunded from HTLC")));
 }
 
 
