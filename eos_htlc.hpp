@@ -1,16 +1,17 @@
 #pragma once
 
 #include <string>
-#include <eosio/crypto.hpp>
+#include <eosiolib/crypto.hpp>
+#include <eosiolib/time.hpp>
 #include <eosio.token/eosio.token.hpp>
 
-class [[eosio::contract]] htlc : public eosio::contract
+class [[eosio::contract]] eos_htlc : public eosio::contract
 {
    public:
       /*****
        * default constructor
        */
-      htlc(eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds)
+      eos_htlc(eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds)
             :contract(receiver, code, ds) {}
 
       /****
@@ -93,5 +94,5 @@ class [[eosio::contract]] htlc : public eosio::contract
       /***
        * Get a contract by its id
        */
-      std::shared_ptr<htlc::htlc_contract> get_by_id(eosio::checksum256 id); 
+      std::shared_ptr<eos_htlc::htlc_contract> get_by_id(eosio::checksum256 id); 
 };

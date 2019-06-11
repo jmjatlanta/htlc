@@ -1,14 +1,15 @@
-#include <htlc.hpp>
-#include <eosio/system.hpp>
+#include <eos_htlc.hpp>
+#include <eosiolib/action.h>
+#include <eosiolib/system.hpp>
 
-uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset token, 
+uint64_t eos_htlc::create(eosio::name sender, eosio::name receiver, eosio::asset token, 
       eosio::checksum256 hashlock, eosio::time_point timelock)
 {
    require_auth(sender);
-   htlc_index htlcs(get_self(), get_first_receiver().value);
+   htlc_index htlcs(get_self(), eosio::contract::get_code().value);
    htlc_contract htlc(sender, receiver, token, hashlock, timelock);
    // make sure an htlc with this hash does not already exist
-   std::shared_ptr<htlc::htlc_contract> old_contract = get_by_id(htlc.id);
+   std::shared_ptr<eos_htlc::htlc_contract> old_contract = get_by_id(htlc.id);
    eosio::check(old_contract == nullptr, "Another HTLC generates that hash. Try changing parameters slightly.");
    // make sure the receiver exists
    assert( is_account( receiver ) );
@@ -36,14 +37,14 @@ uint64_t htlc::create(eosio::name sender, eosio::name receiver, eosio::asset tok
    return key;
 }
 
-void htlc::withdraw(eosio::checksum256 id, std::string preimage)
+void eos_htlc::withdraw(eosio::checksum256 id, std::string preimage)
 {
    std::shared_ptr<htlc_contract> contract = get_by_id(id);
    // basic checks
    eosio::check( contract != nullptr, "HTLC not found");
    eosio::check( !contract->withdrawn, "Tokens from this HTLC have already been withdrawn" );
    eosio::check( !contract->refunded, "Tokens from this HTLC have already been refunded");
-   eosio::check( contract->timelock < eosio::current_block_time(), "HTLC timelock expired");
+   eosio::check( contract->timelock.sec_since_epoch() < current_time(), "HTLC timelock expired");
    eosio::checksum256 passed_in_hash = eosio::sha256(preimage.c_str(), preimage.length());
    eosio::check( contract->hashlock == passed_in_hash, "Preimage mismatch");
    // all looks good, do the transfer
@@ -53,14 +54,14 @@ void htlc::withdraw(eosio::checksum256 id, std::string preimage)
                std::string("Withdrawn from HTLC")));
  }
 
-void htlc::refund(eosio::checksum256 id)
+void eos_htlc::refund(eosio::checksum256 id)
 {
-   std::shared_ptr<htlc::htlc_contract> contract = get_by_id(id);
+   std::shared_ptr<eos_htlc::htlc_contract> contract = get_by_id(id);
    // basic checks
    eosio::check( contract != nullptr, "HTLC not found");
    eosio::check( !contract->withdrawn, "Tokens from this HTLC have already been withdrawn" );
    eosio::check( !contract->refunded, "Tokens from this HTLC have already been refunded");
-   eosio::check( contract->timelock >= eosio::current_block_time(), "HTLC timelock has not expired");
+   eosio::check( contract->timelock.sec_since_epoch() >= current_time(), "HTLC timelock has not expired");
    // all looks good, do the refund
    eosio::action( eosio::permission_level{_self, "active"_n},
          "eosio.token"_n, "transfer"_n,
@@ -68,15 +69,15 @@ void htlc::refund(eosio::checksum256 id)
                std::string("Refunded from HTLC")));
 }
 
-std::shared_ptr<htlc::htlc_contract> htlc::get_by_id(eosio::checksum256 id)
+std::shared_ptr<eos_htlc::htlc_contract> eos_htlc::get_by_id(eosio::checksum256 id)
 {
-   htlc_index htlcs(get_self(), get_first_receiver().value);
+   htlc_index htlcs(get_self(), eosio::contract::get_code().value);
    auto id_index = htlcs.get_index<"id"_n>();
    auto iterator = id_index.find(id);
    if ( iterator == id_index.end() )
       return nullptr;
    // make a copy to keep it around
-   return std::shared_ptr<htlc::htlc_contract>( new htlc_contract(*iterator));
+   return std::shared_ptr<eos_htlc::htlc_contract>( new htlc_contract(*iterator));
 }
 
 
