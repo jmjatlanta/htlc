@@ -13,7 +13,7 @@ Prerequisites:
 
 Firstly we must create a wallet
 
-`$ cleos wallet create —to-console`
+`$ cleos wallet create --to-console`
 
 This will generate a wallet and provide a password. The wallet is now opened and unlocked.
 
@@ -28,6 +28,7 @@ That will import the private key for the public key EOS6MRyAjQq8ud7hVNYcfnVPJqcV
 Now we will need to install a few default system contracts. From the build directory of your eosio.contracts directory, install the eosio.system and eosio.bios contract by following these commands:
 
 `$ cleos set contract eosio contracts/eosio.system -p eosio@active`
+
 `$ cleos set contract eosio contracts/eosio.bios -p eosio@active`
 
 Next, we will install the eosio.token contract Start by creating an account called “eosio.token”, who will be the owner of the contract.
