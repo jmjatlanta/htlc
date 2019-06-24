@@ -69,7 +69,7 @@ With the contract compiled, you can now deploy the contract. We will first creat
 $ cleos create key --to-console
 Private key: 5JxXcF9p7Ncvt37MFA8nWQqaoGnD3dGVmauQjt5L72zx5Mdp3xk
 Public key: EOS69m3cpc3ABwZBqa25KDi4qJrKS16azR2sCV4XZ5WtEbndVYaJ1
-$ cleos wallet import —private-key 5JxXcF9p7Ncvt37MFA8nWQqaoGnD3dGVmauQjt5L72zx5Mdp3xk
+$ cleos wallet import --private-key 5JxXcF9p7Ncvt37MFA8nWQqaoGnD3dGVmauQjt5L72zx5Mdp3xk
 $ cleos create account eosio eosio.htlc EOS69m3cpc3ABwZBqa25KDi4qJrKS16azR2sCV4XZ5WtEbndVYaJ1
 ```
 
