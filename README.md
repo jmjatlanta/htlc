@@ -130,4 +130,4 @@ Bob hashes the game's password using the SHA256 algorithm. The hash is `58995758
 
 Alice locks 12 SYS in an HTLC contract that will transfer that amount to Bob if he provides the password that matches the hash. If Bob does not provide the password before the 4th of July at midnight, Alice gets her 12 SYS back and the deal is off.
 
-`cleos push action eosio.htlc create '["alice", "bob", "12 SYS", "5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B", "2019-07-04T00:00:00"]' -p alice@active`
+`cleos push action htlc create '["alice", "bob", "12 SYS" "5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B", "2019-07-04T00:00:00"]' -p alice@active`
