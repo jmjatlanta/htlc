@@ -1,4 +1,4 @@
-# eos_htlc
+# htlc
 Create Hashed Time Lock Contracts on the EOS blockchain
 
 Note: This version uses deprecated methods. Once I figure out how to upgrade my mac to more recent versions of eos, I will fix it.
@@ -55,11 +55,11 @@ Now deploy the contract:
 
 You are almost there. Now we will deploy the htlc contract. Navigate to where you would like to clone the htlc contract repository, and run the git clone command:
 
-`$ git clone https://github.com/jmjatlanta/eos_htlc`
+`$ git clone https://github.com/jmjatlanta/htlc`
 
 Compile the htlc contract with the following command (NOTE: The BOOST_ROOT environment variable must be set correctly):
 
-`$ eosio-cpp -abigen -o eos_htlc.wasm eos_htlc.cpp -I../eosio.contracts/contracts/eosio.token/include -I. -I$BOOST_ROOT/include`
+`$ eosio-cpp -abigen -o htlc.wasm htlc.cpp -I../eosio.contracts/contracts/eosio.token/include -I. -I$BOOST_ROOT/include`
 
 - TODO: Make the above more flexible. CMake would be great.
 
@@ -70,12 +70,15 @@ $ cleos create key --to-console
 Private key: 5JxXcF9p7Ncvt37MFA8nWQqaoGnD3dGVmauQjt5L72zx5Mdp3xk
 Public key: EOS69m3cpc3ABwZBqa25KDi4qJrKS16azR2sCV4XZ5WtEbndVYaJ1
 $ cleos wallet import --private-key 5JxXcF9p7Ncvt37MFA8nWQqaoGnD3dGVmauQjt5L72zx5Mdp3xk
-$ cleos create account eosio eosio.htlc EOS69m3cpc3ABwZBqa25KDi4qJrKS16azR2sCV4XZ5WtEbndVYaJ1
+$ cleos create account eosio htlc EOS69m3cpc3ABwZBqa25KDi4qJrKS16azR2sCV4XZ5WtEbndVYaJ1
 ```
 
 And deploy the contract
 
-`$ cleos set contract eosio.htlc eos_htlc -p eosio.htlc@active`
+```
+cleos set contract htlc htlc -p htlc@active
+cleos set account permission htlc active --add-code
+```
 
 Now we can test it out.
 

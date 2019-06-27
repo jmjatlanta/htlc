@@ -1,8 +1,8 @@
 #!/bin/bash
 
 DEV_DIR=/Users/JohnJones/Development/cpp
-DATADIR=$DEV_DIR/eos/contracts/eos_htlc/blockchain
-WALLETDIR=$DEV_DIR/eos/contracts/eos_htlc/eosio-wallet
+DATADIR=$DEV_DIR/eos/contracts/htlc/blockchain
+WALLETDIR=$DEV_DIR/eos/contracts/htlc/eosio-wallet
 
 if [ ! -d $DATADIR ]; then
    mkdir -p $DATADIR;

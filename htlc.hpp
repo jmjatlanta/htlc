@@ -5,13 +5,13 @@
 #include <eosiolib/time.hpp>
 #include <eosio.token/eosio.token.hpp>
 
-class [[eosio::contract("eos_htlc")]] eos_htlc : public eosio::contract
+class [[eosio::contract("htlc")]] htlc : public eosio::contract
 {
    public:
       /*****
        * default constructor
        */
-      eos_htlc(eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds)
+      htlc(eosio::name receiver, eosio::name code, eosio::datastream<const char*> ds)
             :contract(receiver, code, ds) {}
 
       /****
@@ -107,10 +107,10 @@ class [[eosio::contract("eos_htlc")]] eos_htlc : public eosio::contract
       /***
        * Get a contract by its id
        */
-      std::shared_ptr<eos_htlc::htlc_contract> get_by_id(eosio::checksum256 id); 
+      std::shared_ptr<htlc::htlc_contract> get_by_id(eosio::checksum256 id); 
 
       /***
        * Get a contract by its key
        */
-      std::shared_ptr<eos_htlc::htlc_contract> get_by_key(uint64_t id); 
+      std::shared_ptr<htlc::htlc_contract> get_by_key(uint64_t id); 
 };
