@@ -5,7 +5,7 @@
 #include <eosiolib/time.hpp>
 #include <eosio.token/eosio.token.hpp>
 
-class [[eosio::contract]] eos_htlc : public eosio::contract
+class [[eosio::contract("eos_htlc")]] eos_htlc : public eosio::contract
 {
    public:
       /*****
@@ -18,20 +18,20 @@ class [[eosio::contract]] eos_htlc : public eosio::contract
        * Create a new HTLC
        */
       [[eosio::action]]
-      uint64_t create(eosio::name sender, eosio::name receiver, eosio::asset token, 
+      uint64_t deposit(eosio::name sender, eosio::name receiver, eosio::asset token, 
             eosio::checksum256 hashlock, eosio::time_point timelock);
 
       /*****
        * I have the preimage. Send the tokens to the receiver
        */
       [[eosio::action]]
-      void withdraw(eosio::checksum256 id, std::string preimage);
+      void withdraw(uint64_t id, std::string preimage);
 
       /*****
        * Return the tokens to the sender
        */
       [[eosio::action]]
-      void refund(eosio::checksum256 id);
+      void refund(uint64_t id);
 
    private:
 
@@ -55,6 +55,7 @@ class [[eosio::contract]] eos_htlc : public eosio::contract
          eosio::checksum256 by_id() const { return id; }
 
          htlc_contract() {}
+
          htlc_contract(eosio::name sender, eosio::name receiver, eosio::asset token,
                eosio::checksum256 hashlock, eosio::time_point timelock)
          {
@@ -69,6 +70,18 @@ class [[eosio::contract]] eos_htlc : public eosio::contract
             this->id = create_id(this); // unique secondary index
             // NOTE: this->key is set elsewhere
          }
+
+         EOSLIB_SERIALIZE(htlc_contract, 
+               (key)
+               (sender)
+               (receiver)
+               (token)
+               (hashlock)
+               (timelock)
+               (withdrawn)
+               (refunded)
+               (preimage)
+               );
       };
 
       /*****
@@ -95,4 +108,9 @@ class [[eosio::contract]] eos_htlc : public eosio::contract
        * Get a contract by its id
        */
       std::shared_ptr<eos_htlc::htlc_contract> get_by_id(eosio::checksum256 id); 
+
+      /***
+       * Get a contract by its key
+       */
+      std::shared_ptr<eos_htlc::htlc_contract> get_by_key(uint64_t id); 
 };

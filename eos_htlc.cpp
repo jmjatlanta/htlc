@@ -2,7 +2,7 @@
 #include <eosiolib/action.h>
 #include <eosiolib/system.hpp>
 
-uint64_t eos_htlc::create(eosio::name sender, eosio::name receiver, eosio::asset token, 
+uint64_t eos_htlc::deposit(eosio::name sender, eosio::name receiver, eosio::asset token, 
       eosio::checksum256 hashlock, eosio::time_point timelock)
 {
    require_auth(sender);
@@ -37,9 +37,9 @@ uint64_t eos_htlc::create(eosio::name sender, eosio::name receiver, eosio::asset
    return key;
 }
 
-void eos_htlc::withdraw(eosio::checksum256 id, std::string preimage)
+void eos_htlc::withdraw(uint64_t id, std::string preimage)
 {
-   std::shared_ptr<htlc_contract> contract = get_by_id(id);
+   std::shared_ptr<htlc_contract> contract = get_by_key(id);
    // basic checks
    eosio::check( contract != nullptr, "HTLC not found");
    eosio::check( !contract->withdrawn, "Tokens from this HTLC have already been withdrawn" );
@@ -54,9 +54,9 @@ void eos_htlc::withdraw(eosio::checksum256 id, std::string preimage)
                std::string("Withdrawn from HTLC")));
  }
 
-void eos_htlc::refund(eosio::checksum256 id)
+void eos_htlc::refund(uint64_t id)
 {
-   std::shared_ptr<eos_htlc::htlc_contract> contract = get_by_id(id);
+   std::shared_ptr<eos_htlc::htlc_contract> contract = get_by_key(id);
    // basic checks
    eosio::check( contract != nullptr, "HTLC not found");
    eosio::check( !contract->withdrawn, "Tokens from this HTLC have already been withdrawn" );
@@ -75,6 +75,17 @@ std::shared_ptr<eos_htlc::htlc_contract> eos_htlc::get_by_id(eosio::checksum256 
    auto id_index = htlcs.get_index<"id"_n>();
    auto iterator = id_index.find(id);
    if ( iterator == id_index.end() )
+      return nullptr;
+   // make a copy to keep it around
+   return std::shared_ptr<eos_htlc::htlc_contract>( new htlc_contract(*iterator));
+}
+
+std::shared_ptr<eos_htlc::htlc_contract> eos_htlc::get_by_key(uint64_t id)
+{
+   htlc_index htlcs(get_self(), eosio::contract::get_code().value);
+
+   auto iterator = htlcs.find(id);
+   if ( iterator == htlcs.end() )
       return nullptr;
    // make a copy to keep it around
    return std::shared_ptr<eos_htlc::htlc_contract>( new htlc_contract(*iterator));
