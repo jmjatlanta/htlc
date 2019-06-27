@@ -78,3 +78,42 @@ And deploy the contract
 `$ cleos set contract eosio.htlc eosio_htlc -p eosio.htlc@active`
 
 Now we can test it out.
+
+If you haven't already followed the token tutorial, follow these steps to prepare your test environment:
+
+create a private/public key pair that we can use for both Alice and Bob (NOTE: it is a bad idea to share private keys like this, but we are only in a tutorial):
+`cleos create key --to-console`
+The output for me was:
+```
+Private key: 5JkdVmBrtvNvdCNjw2B3FbSBCiFcPvcuHnUHJ4CzR8Re3wgXp8K
+Public key: EOS7nDGfE7EYxGYs2GKEnMKUfGNZVRPivPnXN8sefdynb7q43jxb8
+```
+And we will now import the private key into the wallet, and use the public key to create users `alice` and `bob`.
+```
+cleos wallet import --private-key 5JkdVmBrtvNvdCNjw2B3FbSBCiFcPvcuHnUHJ4CzR8Re3wgXp8K
+cleos create account eosio bob EOS7nDGfE7EYxGYs2GKEnMKUfGNZVRPivPnXN8sefdynb7q43jxb8
+cleos create account eosio alice EOS7nDGfE7EYxGYs2GKEnMKUfGNZVRPivPnXN8sefdynb7q43jxb8
+```
+now create the token `SYS`:
+`cleos push action eosio.token create '[ "eosio", "1000000000.0000 SYS"]' -p eosio.token@active`
+
+`cleos push action eosio.token issue '[ "alice", "100.0000 SYS", "memo" ]' -p eosio@active`
+`cleos push action eosio.token issue '[ "bob", "50.0000 SYS", "memo" ]' -p eosio@active`
+
+We can verify that everything is okay by checking the balances in the accounts:
+`cleos get currency balance eosio.token alice SYS`
+`cleos get currency balance eosio.token bob SYS`
+
+If we did everything correctly, Alice should have 100 SYS, and bob should have 50 SYS.
+
+Testing HTLC:
+
+Alice wants a secret password for an online game, and is willing to pay for it. Bob has the password, and is willing to sell it for 12 SYS. Alice is willing to pay 12 SYS, but does not trust that Bob will give the password if she pays him first.
+
+Alice and Bob agree to write and execute an HTLC to handle the exchange of payment and information.
+
+Bob hashes the game's password using the SHA256 algorithm. The hash is `5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B`. He shares that hash with Alice.
+
+Alice locks 12 SYS in an HTLC contract that will transfer that amount to Bob if he provides the password that matches the hash. If Bob does not provide the password before the 4th of July at midnight, Alice gets her 12 SYS back and the deal is off.
+
+`cleos push action eosio.htlc create '["alice", "bob", "12 SYS", "5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B", "2019-07-04T00:00:00"]' -p alice@active`

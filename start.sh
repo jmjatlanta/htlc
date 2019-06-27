@@ -1,20 +1,29 @@
 #!/bin/bash
 
-DATADIR="./blockchain"
+DEV_DIR=/Users/JohnJones/Development/cpp
+DATADIR=$DEV_DIR/eos/contracts/eos_htlc/blockchain
+WALLETDIR=$DEV_DIR/eos/contracts/eos_htlc/eosio-wallet
 
 if [ ! -d $DATADIR ]; then
    mkdir -p $DATADIR;
+   mkdir -p $DATADIR/config
+   cp ./config.dev.ini $DATADIR/config/config.ini
+fi
+
+if [ ! -d $WALLETDIR ]; then
+   mkdir -p $WALLETDIR;
+   cp ./config.wallet.ini $WALLETDIR/config.ini
 fi
 
 # start keosd                                                                                                              
-keosd & \
+keosd --wallet-dir $WALLETDIR & \
 echo $! > $DATADIR"/keosd.pid"
                                                                                                                            
 # give it a chance to start                                                                                                
 sleep 3                                                                                                                    
 
 # now start nodeos
-nodeos \
+nodeos -p eosio \
 --signature-provider EOS_PUB_DEV_KEY=KEY:EOS_PRIV_DEV_KEY \
 --plugin eosio::producer_plugin \
 --plugin eosio::chain_api_plugin \
