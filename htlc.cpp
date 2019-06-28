@@ -10,7 +10,6 @@ void htlc::transfer_happened(const eosio::name& from, const eosio::name& to,
    auto itr = balances.find(quantity.symbol.raw());
    if (itr == balances.end())
    {
-      eosio::print("Adding ", from);
       // add the new account
       balances.emplace(get_self(), [&](auto& row)
       {
@@ -21,7 +20,6 @@ void htlc::transfer_happened(const eosio::name& from, const eosio::name& to,
    {
       // account exists, look for the symbol
       htlc_balance bal = *itr;
-      eosio::print("Adding ", quantity.symbol, " to account ", from);
       bal.token += quantity;
       balances.modify(*itr, _self, [&](auto& row)
       {
@@ -39,7 +37,7 @@ void htlc::balances(const eosio::name& acct)
    else
       for_each(balances.begin(), balances.end(), [](const htlc_balance& b)
          {
-            eosio::print("Symbol: ", b.token.symbol, " Amount: ", b.token.amount, "\n");
+            b.token.print();
          });
 }
 
@@ -160,6 +158,13 @@ eosio::asset htlc::get_balance(const eosio::name& acct, const eosio::asset& toke
    return retVal;
 }
 
+double htlc::to_real(const eosio::asset& in)
+{
+   if (in.symbol.precision() == 0)
+      return in.amount;
+   return ((double)in.amount) / in.symbol.precision();
+}
+
 bool htlc::withdraw_balance(const eosio::name& acct, const eosio::asset& token)
 {
    balances_index balances(get_self(), acct.value);
@@ -169,6 +174,8 @@ bool htlc::withdraw_balance(const eosio::name& acct, const eosio::asset& token)
       // found the token
       htlc_balance  bal = *itr;
       bal.token -= token;
+      if (to_real(bal.token) < 0.0)
+         return false;
       balances.modify(*itr, _self, [&](auto& row)
          {
             row.token = bal.token;
