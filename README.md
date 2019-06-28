@@ -77,6 +77,7 @@ And deploy the contract
 
 ```
 cleos set contract htlc htlc -p htlc@active
+cleos set account permission htlc active --add-code
 ```
 
 Now we can test it out.
