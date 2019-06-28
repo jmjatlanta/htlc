@@ -18,22 +18,41 @@ class [[eosio::contract("htlc")]] htlc : public eosio::contract
        * Create a new HTLC
        */
       [[eosio::action]]
-      uint64_t deposit(eosio::name sender, eosio::name receiver, eosio::asset token, 
+      uint64_t build(eosio::name sender, eosio::name receiver, eosio::asset token, 
             eosio::checksum256 hashlock, eosio::time_point timelock);
 
       /*****
        * I have the preimage. Send the tokens to the receiver
        */
       [[eosio::action]]
-      void withdraw(uint64_t id, std::string preimage);
+      void withdrawhtlc(uint64_t id, std::string preimage);
 
       /*****
        * Return the tokens to the sender
        */
       [[eosio::action]]
-      void refund(uint64_t id);
+      void refundhtlc(uint64_t id);
+
+      [[eosio::on_notify("eosio.token::transfer")]]
+      void transfer_happened( eosio::name from, eosio::name to, eosio::asset quantity,
+            const std::string& memo );
+
+      using transfer_action = eosio::action_wrapper<eosio::name("transfer"), &htlc::transfer_happened>;
 
    private:
+
+      /*****
+       * A table that keeps user balances
+       */
+      struct [[eosio::table]] htlc_balance
+      {
+         eosio::name owner;
+         std::vector<eosio::asset> balances;
+
+         uint64_t primary_key() const { return owner.value; }
+
+         EOSLIB_SERIALIZE( htlc_balance, (owner)(balances));
+      };
 
       /***
        * persistence record format
@@ -91,6 +110,8 @@ class [[eosio::contract("htlc")]] htlc : public eosio::contract
             eosio::indexed_by<"id"_n, 
             eosio::const_mem_fun<htlc_contract, eosio::checksum256, 
             &htlc_contract::by_id>>> htlc_index;
+
+      typedef eosio::multi_index<"balances"_n, htlc_balance> balances_index; 
 
       /****
        * Assists in building the id. This should only be called by the ctor, as some fields

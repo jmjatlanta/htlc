@@ -2,7 +2,49 @@
 #include <eosiolib/action.h>
 #include <eosiolib/system.hpp>
 
-uint64_t htlc::deposit(eosio::name sender, eosio::name receiver, eosio::asset token, 
+void htlc::transfer_happened( eosio::name from, eosio::name to, eosio::asset quantity,
+      const std::string& memo )
+{
+   // find the account
+   balances_index balances(get_self(), eosio::contract::get_code().value);
+   auto itr = balances.find(from.value);
+   if (itr != balances.end())
+   {
+      // add the new account
+      balances.emplace(get_self(), [&](auto& row)
+      {
+         row.owner = from;
+         std::vector<eosio::asset> assets;
+         row.balances = std::vector<eosio::asset>();
+         row.balances.push_back(quantity);
+      });
+   } 
+   else
+   {
+      // account exists, look for the symbol
+      htlc_balance  bal = *itr;
+      bool found_symbol = false;
+      for(auto b : bal.balances)
+      {
+         if (b.symbol == quantity.symbol)
+         {
+            found_symbol = true;
+            b += quantity;
+            break;
+         }
+      }
+      if (!found_symbol)
+      {
+         bal.balances.push_back(quantity);
+      }
+      balances.modify(itr, _self, [&](auto& row)
+      {
+         row.balances = bal.balances;
+      });
+   } 
+}
+
+uint64_t htlc::build(eosio::name sender, eosio::name receiver, eosio::asset token, 
       eosio::checksum256 hashlock, eosio::time_point timelock)
 {
    require_auth(sender);
@@ -40,7 +82,7 @@ uint64_t htlc::deposit(eosio::name sender, eosio::name receiver, eosio::asset to
    return key;
 }
 
-void htlc::withdraw(uint64_t id, std::string preimage)
+void htlc::withdrawhtlc(uint64_t id, std::string preimage)
 {
    htlc_index htlcs(get_self(), eosio::contract::get_code().value);
    auto iterator = htlcs.find(id);
@@ -64,7 +106,7 @@ void htlc::withdraw(uint64_t id, std::string preimage)
                std::string("Withdrawn from HTLC"))).send();
  }
 
-void htlc::refund(uint64_t id)
+void htlc::refundhtlc(uint64_t id)
 {
    htlc_index htlcs(get_self(), eosio::contract::get_code().value);
    auto iterator = htlcs.find(id);
