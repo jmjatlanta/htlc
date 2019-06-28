@@ -2,46 +2,45 @@
 #include <eosiolib/action.h>
 #include <eosiolib/system.hpp>
 
-void htlc::transfer_happened( eosio::name from, eosio::name to, eosio::asset quantity,
-      const std::string& memo )
+void htlc::transfer_happened(const eosio::name& from, const eosio::name& to,
+      const eosio::asset& quantity, const std::string& memo )
 {
-   // find the account
-   balances_index balances(get_self(), eosio::contract::get_code().value);
-   auto itr = balances.find(from.value);
-   if (itr != balances.end())
+   // find the balance
+   balances_index balances(get_self(), from.value);
+   auto itr = balances.find(quantity.symbol.raw());
+   if (itr == balances.end())
    {
+      eosio::print("Adding ", from);
       // add the new account
       balances.emplace(get_self(), [&](auto& row)
       {
-         row.owner = from;
-         std::vector<eosio::asset> assets;
-         row.balances = std::vector<eosio::asset>();
-         row.balances.push_back(quantity);
+         row.token = quantity;
       });
    } 
    else
    {
       // account exists, look for the symbol
-      htlc_balance  bal = *itr;
-      bool found_symbol = false;
-      for(auto b : bal.balances)
+      htlc_balance bal = *itr;
+      eosio::print("Adding ", quantity.symbol, " to account ", from);
+      bal.token += quantity;
+      balances.modify(*itr, _self, [&](auto& row)
       {
-         if (b.symbol == quantity.symbol)
-         {
-            found_symbol = true;
-            b += quantity;
-            break;
-         }
-      }
-      if (!found_symbol)
-      {
-         bal.balances.push_back(quantity);
-      }
-      balances.modify(itr, _self, [&](auto& row)
-      {
-         row.balances = bal.balances;
+         row = bal;
       });
    } 
+}
+
+void htlc::balances(const eosio::name& acct)
+{
+   // find the account
+   balances_index balances(_self, acct.value);
+   if (balances.begin() == balances.end())
+      eosio::print("No balances found for account ", acct);
+   else
+      for_each(balances.begin(), balances.end(), [](const htlc_balance& b)
+         {
+            eosio::print("Symbol: ", b.token.symbol, " Amount: ", b.token.amount, "\n");
+         });
 }
 
 uint64_t htlc::build(eosio::name sender, eosio::name receiver, eosio::asset token, 
@@ -56,9 +55,7 @@ uint64_t htlc::build(eosio::name sender, eosio::name receiver, eosio::asset toke
    // make sure the receiver exists
    assert( is_account( receiver ) );
    // make sure the sender has the funds
-   const auto bal = eosio::token::get_balance("eosio.token"_n, sender, token.symbol.code());
-   eosio::print("My balance: ", bal.amount, " Transaction value: ", token.amount );
-   eosio::check(token.amount < bal.amount, "Insuffiient Funds");
+   eosio::check(withdraw_balance(sender, token), "Insufficient Funds");
    // build the record
    uint64_t key = htlcs.available_primary_key();
    htlcs.emplace(get_self(), [&](auto& row) {
@@ -73,12 +70,7 @@ uint64_t htlc::build(eosio::name sender, eosio::name receiver, eosio::asset toke
       row.refunded = htlc.refunded;
       row.preimage = htlc.preimage;
    });
-   eosio::print("HTLC Contract Key: ", key, " Hash: ", htlc.id);
-   // Hold funds in this contract
-   eosio::action( eosio::permission_level{sender, "active"_n},
-         "eosio.token"_n, "transfer"_n,
-         std::make_tuple(sender, _self, token, std::string("Held in HTLC"))).send();
-   eosio::print("HTLC Contract Key: ", key, " Hash: ", htlc.id);
+   eosio::print(" HTLC Contract Key: ", key, " Hash: ", htlc.id);
    return key;
 }
 
@@ -102,7 +94,7 @@ void htlc::withdrawhtlc(uint64_t id, std::string preimage)
    // all looks good, do the transfer
    eosio::action( eosio::permission_level{_self, "active"_n},
          "eosio.token"_n, "transfer"_n,
-         std::make_tuple(contract.receiver, "eosio.token"_n, contract.token, 
+         std::make_tuple(_self, contract.receiver, contract.token, 
                std::string("Withdrawn from HTLC"))).send();
  }
 
@@ -123,7 +115,7 @@ void htlc::refundhtlc(uint64_t id)
       });   // all looks good, do the refund
    eosio::action( eosio::permission_level{_self, "active"_n},
          "eosio.token"_n, "transfer"_n,
-         std::make_tuple(contract.sender, "eosio.token"_n, contract.token, 
+         std::make_tuple(_self, contract.sender, contract.token, 
                std::string("Refunded from HTLC"))).send();
 }
 
@@ -149,4 +141,39 @@ std::shared_ptr<htlc::htlc_contract> htlc::get_by_key(uint64_t id)
    return std::shared_ptr<htlc::htlc_contract>( new htlc_contract(*iterator));
 }
 
+/***
+ * Query our table for a token balance of an account
+ */
+eosio::asset htlc::get_balance(const eosio::name& acct, const eosio::asset& token)
+{
+   eosio::asset retVal;
+   retVal.symbol = token.symbol;
+   retVal.set_amount(0);
 
+   // find the account
+   balances_index balances(get_self(), acct.value);
+   auto itr = balances.find(token.symbol.raw());
+   if (itr != balances.end())
+   {
+      retVal.set_amount( (*itr).token.amount );
+   }
+   return retVal;
+}
+
+bool htlc::withdraw_balance(const eosio::name& acct, const eosio::asset& token)
+{
+   balances_index balances(get_self(), acct.value);
+   auto itr = balances.find(token.symbol.raw());
+   if (itr != balances.end())
+   {
+      // found the token
+      htlc_balance  bal = *itr;
+      bal.token -= token;
+      balances.modify(*itr, _self, [&](auto& row)
+         {
+            row.token = bal.token;
+         });
+      return true;
+   }
+   return false;
+}
