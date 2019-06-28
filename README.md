@@ -143,4 +143,8 @@ If Bob chooses not to give away the password, Alice can retrieve her 12 SYS afte
 
 `cleos push action htlc refundhtlc '["3"]' -p alice`
 
-ToDo: Have a way to browse by from, to, hash. Have a way to display the details of a specific contract.
+To review the contract, anyone can call reviewhtlc:
+
+`cleos push action htlc reviewhtlc '["3"]' -p alice`
+
+ToDo: Have a way to browse by from, to, hash.
