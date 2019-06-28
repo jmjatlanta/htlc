@@ -77,6 +77,7 @@ And deploy the contract
 
 ```
 cleos set contract htlc htlc -p htlc@active
+cleos set account permission htlc active --add-code
 ```
 
 Now we can test it out.
@@ -127,9 +128,19 @@ Alice and Bob agree to write and execute an HTLC to handle the exchange of payme
 
 Bob hashes the game's password using the SHA256 algorithm. The hash is `5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B`. He shares that hash with Alice.
 
-Alice locks 12 SYS in an HTLC contract that will transfer that amount to Bob if he provides the password that matches the hash. If Bob does not provide the password before the 4th of July at midnight, Alice gets her 12 SYS back and the deal is off.
+Alice locks 12 SYS in an HTLC contract that will transfer that amount to Bob if he provides the password that matches the hash. 
 
 ```
-cleos push action eosio.token transfer '["alice", "htlc", "1.0000 SYS", "For the future"]' -p alice@active
-cleos push action htlc build '["alice", "bob", "1.0000 SYS" "5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B", "2019-07-04T00:00:00"]' -p alice@active
+cleos push action eosio.token transfer '["alice", "htlc", "12.0000 SYS", "For the future"]' -p alice@active
+cleos push action htlc build '["alice", "bob", "12.0000 SYS" "5899575803417E3356A133C51EFFF8314C0D3D7A52F37472F90B1DCE5288525B", "2019-07-04T00:00:00"]' -p alice@active
 ```
+
+That action provides an identifier that Alice can give Bob so he can easily look at the contract. In this case, the identifier was "3". Bob can claim the funds by passing in the identifier and the password.
+
+`cleos push action htlc withdrawhtlc '["3", "SuperSecret"]' -p bob`
+
+If Bob chooses not to give away the password, Alice can retrieve her 12 SYS after midnight on the 4th of July.
+
+`cleos push action htlc refundhtlc '["3"]' -p alice`
+
+ToDo: Have a way to browse by from, to, hash. Have a way to display the details of a specific contract.

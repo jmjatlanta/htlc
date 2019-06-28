@@ -2,15 +2,40 @@
 #include <eosiolib/action.h>
 #include <eosiolib/system.hpp>
 
+template<typename CharT>
+static std::string to_hex(const CharT* d, uint32_t s) {
+  std::string r;
+  const char* to_hex="0123456789abcdef";
+  uint8_t* c = (uint8_t*)d;
+  for( uint32_t i = 0; i < s; ++i ) {
+    (r += to_hex[(c[i] >> 4)]) += to_hex[(c[i] & 0x0f)];
+  }
+  return r;
+}
+
+static std::string to_date(eosio::time_point_sec in)
+{
+   return std::to_string(in.utc_seconds);
+}
+
+static std::string t_f(bool in)
+{
+   if(in)
+      return "true";
+   return "false";
+}
+
 void htlc::transfer_happened(const eosio::name& from, const eosio::name& to,
       const eosio::asset& quantity, const std::string& memo )
 {
+   // make sure the transfer has _self as the "to"
+   if (to != _self)
+      return;
    // find the balance
    balances_index balances(get_self(), from.value);
    auto itr = balances.find(quantity.symbol.raw());
    if (itr == balances.end())
    {
-      eosio::print("Adding ", from);
       // add the new account
       balances.emplace(get_self(), [&](auto& row)
       {
@@ -21,7 +46,6 @@ void htlc::transfer_happened(const eosio::name& from, const eosio::name& to,
    {
       // account exists, look for the symbol
       htlc_balance bal = *itr;
-      eosio::print("Adding ", quantity.symbol, " to account ", from);
       bal.token += quantity;
       balances.modify(*itr, _self, [&](auto& row)
       {
@@ -39,7 +63,7 @@ void htlc::balances(const eosio::name& acct)
    else
       for_each(balances.begin(), balances.end(), [](const htlc_balance& b)
          {
-            eosio::print("Symbol: ", b.token.symbol, " Amount: ", b.token.amount, "\n");
+            b.token.print();
          });
 }
 
@@ -66,6 +90,7 @@ uint64_t htlc::build(eosio::name sender, eosio::name receiver, eosio::asset toke
       row.token = htlc.token;
       row.hashlock = htlc.hashlock;
       row.timelock = htlc.timelock;
+      row.funded = true;
       row.withdrawn = htlc.withdrawn;
       row.refunded = htlc.refunded;
       row.preimage = htlc.preimage;
@@ -90,6 +115,7 @@ void htlc::withdrawhtlc(uint64_t id, std::string preimage)
    htlcs.modify(iterator, get_self(), [&](auto& row)
       {
          row.withdrawn = true;
+         row.preimage = preimage;
       });
    // all looks good, do the transfer
    eosio::action( eosio::permission_level{_self, "active"_n},
@@ -105,6 +131,7 @@ void htlc::refundhtlc(uint64_t id)
    // basic checks
    eosio::check( iterator != htlcs.end(), "HTLC not found");
    htlc_contract contract = *iterator;
+   eosio::check( contract.funded, "This HTLC has yet to be funded");
    eosio::check( !contract.withdrawn, "Tokens from this HTLC have already been withdrawn" );
    eosio::check( !contract.refunded, "Tokens from this HTLC have already been refunded");
    eosio::check( contract.timelock.sec_since_epoch() >= current_time(), "HTLC timelock has not expired");
@@ -117,6 +144,26 @@ void htlc::refundhtlc(uint64_t id)
          "eosio.token"_n, "transfer"_n,
          std::make_tuple(_self, contract.sender, contract.token, 
                std::string("Refunded from HTLC"))).send();
+}
+
+void htlc::reviewhtlc(uint64_t id)
+{
+   htlc_index htlcs(get_self(), eosio::contract::get_code().value);
+   auto iterator = htlcs.find(id);
+   eosio::check( iterator != htlcs.end(), "HTLC not found");
+   htlc_contract contract = *iterator;
+   std::string result = std::string("{ ")
+         + "\"from\": \"" + contract.sender.to_string() + "\", "
+         + "\"to\": \"" + contract.receiver.to_string() + "\", "
+         + "\"amount\": \"" + contract.token.to_string() + "\", "
+         + "\"hashlock\": \"" + to_hex(&contract.hashlock, sizeof(contract.hashlock)) + "\", "
+         + "\"timelock\": \"" + to_date(contract.timelock) + "\", "
+         + "\"funded\": \"" + t_f(contract.funded) + "\", "
+         + "\"withdrawn\": \"" + t_f(contract.withdrawn) + "\", "
+         + "\"refunded\": \"" + t_f(contract.refunded) + "\", "
+         + "\"preimage\": \"" + contract.preimage + "\" " 
+         + "}";
+   eosio::print(result);
 }
 
 std::shared_ptr<htlc::htlc_contract> htlc::get_by_id(eosio::checksum256 id)
@@ -160,6 +207,13 @@ eosio::asset htlc::get_balance(const eosio::name& acct, const eosio::asset& toke
    return retVal;
 }
 
+double htlc::to_real(const eosio::asset& in)
+{
+   if (in.symbol.precision() == 0)
+      return in.amount;
+   return ((double)in.amount) / in.symbol.precision();
+}
+
 bool htlc::withdraw_balance(const eosio::name& acct, const eosio::asset& token)
 {
    balances_index balances(get_self(), acct.value);
@@ -169,6 +223,8 @@ bool htlc::withdraw_balance(const eosio::name& acct, const eosio::asset& token)
       // found the token
       htlc_balance  bal = *itr;
       bal.token -= token;
+      if (to_real(bal.token) < 0.0)
+         return false;
       balances.modify(*itr, _self, [&](auto& row)
          {
             row.token = bal.token;

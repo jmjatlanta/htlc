@@ -33,6 +33,13 @@ class [[eosio::contract("htlc")]] htlc : public eosio::contract
       [[eosio::action]]
       void refundhtlc(uint64_t id);
 
+      /*****
+       * Review details of an HTLC
+       * @param id the htlc identifier
+       */
+      [[eosio::action]]
+      void reviewhtlc(uint64_t id);
+
       /****
        * Query for balances of an account
        * @param acct the account to display
@@ -148,5 +155,7 @@ class [[eosio::contract("htlc")]] htlc : public eosio::contract
        * Get an HTLC contract by its key
        */
       std::shared_ptr<htlc::htlc_contract> get_by_key(uint64_t id); 
+
+      static double to_real(const eosio::asset& in);
 
 };
