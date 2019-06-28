@@ -148,5 +148,8 @@ To review the contract, anyone can call reviewhtlc:
 `cleos push action htlc reviewhtlc '["3"]' -p alice`
 
 ToDo: 
-- [ ] Have a way to browse by from, to, hash.
+- [ ] Have a way to browse by from, to, hash
 - [ ] Allow for other hash algos ( i.e. RIPEMD160, HASH160 )
+- [ ] Provide a way for refunding a deposit (i.e. HTLC never created)
+- [ ] Better time formatting in reviewhtlc
+- [ ] Security and performance review
